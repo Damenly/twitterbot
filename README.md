@@ -42,6 +42,7 @@ Preferably, you should use crontab to set up Twitterbot to run on a schedule.
 systemd examples:
 
 ```bash
+cp twitterbot.py /usr/bin/
 cp twitter.service /etc/systemd/system/twitter.service
 systemctl enable twitter.service
 systemctl start twitter.service
