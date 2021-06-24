@@ -9,11 +9,11 @@ Both functions (Reading RSS and retweeting) can be used independently. The bot i
 
 ## Install
 
-1. Download or git clone Twitterbot:
-   - `git clone https://github.com/peterdalle/twitterbot`
-2. Install dependencies [feedparser](https://pythonhosted.org/feedparser/) and [twython](https://twython.readthedocs.org/en/latest/):
+1. Download or git clone wb2twitter:
+   - `git clone https://github.com/Damenly/wb2twitter`
+2. Install dependencies [feedparser](https://pythonhosted.org/feedparser/) and [tweepy](https://www.tweepy.org/):
    - `pip install feedparser`
-   - `pip install twython`
+   - `pip install tweepy`
 3. Create a [Twitter application](https://apps.twitter.com/), and generate keys, tokens etc.
 4. Modifiy the settings in the source code.
    - Modify `feed_url` to the RSS feed you want to read.
@@ -30,30 +30,22 @@ Both functions (Reading RSS and retweeting) can be used independently. The bot i
 Read the RSS feed and post to Twitter account:
 
 ```bash
-$ python twitterbot.py rss
+$ python twitterbot.py
 ```
 
-Search for tweets and retweet them:
-
-```bash
-$ python twitterbot.py rt
 ```
 
 ## Setup crontabs examples
 
 Preferably, you should use crontab to set up Twitterbot to run on a schedule.
 
-crontab examples:
+systemd examples:
 
 ```bash
-# Read RSS feed every hour and tweet new links.
-00 * * * * python twitterbot.py rss
-
-# Rewteet keywords/hashtags every 15 minutes.
-*/15 * * * * python twitterbot.py rt
+cp twitter.service /etc/systemd/system/twitter.service
+systemctl enable twitter.service
+systemctl start twitter.service
 ```
-
-Use the [cron schedule expression editor](https://crontab.guru/) to easily create crons.
 
 ## Questions
 
