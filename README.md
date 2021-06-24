@@ -1,9 +1,9 @@
-# Twitterbot
+# wb2twitter
 
 Twitterbot is a simple Python application for:
 
 * reading and parsing a RSS feed and posting its title and links to a Twitter account.
-* searching tweets for keywords or hashtags and retweet those tweets.
+* sync sina weibo to twitter
 
 Both functions (Reading RSS and retweeting) can be used independently. The bot is limited to handle one feed and one Twitter account.
 
