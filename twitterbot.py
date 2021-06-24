@@ -3,8 +3,14 @@
 import os
 import sys
 import feedparser
-from twython import Twython, TwythonError
+import tweepy
+import re
+import urllib
+import time
 
+def striphtml(data):
+    p = re.compile(r'<.*?>')
+    return p.sub('', data)
 
 class Settings:
     """Twitter bot application settings.
@@ -12,13 +18,13 @@ class Settings:
     Enter the RSS feed you want to tweet, or keywords you want to retweet.
     """
     # RSS feed to read and post tweets from.
-    feed_url = "http://example.net/feed/"
+    feed_url = ""
 
     # Log file to save all tweeted RSS links (one URL per line).
-    posted_urls_output_file = "posted-urls.log"
+    posted_urls_output_file = "/usr/local/posted-urls.log"
 
     # Log file to save all retweeted tweets (one tweetid per line).
-    posted_retweets_output_file = "posted-retweets.log"
+    posted_retweets_output_file = "/usr/local/posted-retweets.log"
 
     # Include tweets with these words when retweeting.
     retweet_include_words = ["#hashtag"]
@@ -33,10 +39,10 @@ class TwitterAuth:
     Create a Twitter app at https://apps.twitter.com/ and generate
     consumer key, consumer secret etc. and insert them here.
     """
-    consumer_key = "XXX"
-    consumer_secret = "XXX"
-    access_token = "XXX"
-    access_token_secret = "XXX"
+    consumer_key = ""
+    consumer_secret = ""
+    access_token = ""
+    access_token_secret = ""
 
 
 def compose_message(item: feedparser.FeedParserDict) -> str:
@@ -77,7 +83,7 @@ def shorten_text(text: str, maxlength: int) -> str:
     return (text[:maxlength] + '...') if len(text) > maxlength else text
 
 
-def post_tweet(message: str):
+def post_tweet_plain_text(message: str):
     """Post tweet message to account.
 
     Parameters
@@ -86,14 +92,50 @@ def post_tweet(message: str):
         Message to post on Twitter.
     """
     try:
-        twitter = Twython(TwitterAuth.consumer_key,
-                          TwitterAuth.consumer_secret,
-                          TwitterAuth.access_token,
-                          TwitterAuth.access_token_secret)
-        twitter.update_status(status=message)
-    except TwythonError as e:
+        auth = tweepy.OAuthHandler(TwitterAuth.consumer_key, TwitterAuth.consumer_secret)
+        auth.set_access_token( TwitterAuth.access_token, TwitterAuth.access_token_secret)
+        api = tweepy.API(auth)
+
+        api.update_status(message)
+    except Exception as e:
         print(e)
 
+def post_tweet_with_images(message: str, files):
+    """Post tweet message to account.
+
+    Parameters
+    ----------
+    message: str
+        Message to post on Twitter.
+    """
+    try:
+        auth = tweepy.OAuthHandler(TwitterAuth.consumer_key, TwitterAuth.consumer_secret)
+        auth.set_access_token( TwitterAuth.access_token, TwitterAuth.access_token_secret)
+        api = tweepy.API(auth)
+        api.update_status(status=message, media_ids=upload_imgs(api, files))
+
+    except Exception as e:
+        print(e)
+
+def download_images(urls):
+    files = []
+    try:
+        for url in urls:
+            name =  "/tmp/" + url.rsplit('/', 1)[-1]
+            urllib.request.urlretrieve(url, name)
+            files.append(name)
+
+    except Exception as e:
+        print(e)
+        return []
+    return files
+
+def upload_imgs(api, files):
+    media_ids = []
+    for f in files:
+        res = api.media_upload(f)
+        media_ids.append(res.media_id)
+    return media_ids
 
 def read_rss_and_tweet(url: str):
     """Read RSS and post feed items as a tweet.
@@ -105,14 +147,41 @@ def read_rss_and_tweet(url: str):
     """
     feed = feedparser.parse(url)
     if feed:
-        for item in feed["items"]:
+        feed["items"].reverse()
+        items = feed["items"]
+        for item in items:
+            #print(item)
+            refs = re.findall(r'(https?://[^\s]+)', item["description"])
+            #print(refs)
+            images = []
+            for ref in refs:
+                ref = ref.replace('"', '')
+                ref = ref.replace("'", '')
+                #print(ref)
+                if ref.endswith(".jpg") or ref.endswith(".gif"):
+                    images.append(ref.replace('https', 'http'))
+            images = list(set(images))
+            message = striphtml(item["description"])
+            if len(message) >= 140:
+                message = message[0:139]
+
+            print(message, images)
+            #print("\t", striphtml(item["description"]), item["link"], "\n")
+            #continue
             link = item["link"]
             if is_in_logfile(link, Settings.posted_urls_output_file):
                 print("Already posted:", link)
             else:
-                post_tweet(message=compose_message(item))
+                if len(images) == 0:
+                    post_tweet_plain_text(message)
+                else:
+                    files = download_images(images)
+                    post_tweet_with_images(message, files)
+
                 write_to_logfile(link, Settings.posted_urls_output_file)
                 print("Posted:", link)
+                time.sleep(60)
+
     else:
         print("Nothing found in feed", url)
 
@@ -220,12 +289,6 @@ def display_help():
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        if sys.argv[1].lower() == "rss":
-            read_rss_and_tweet(url=Settings.feed_url)
-        elif sys.argv[1].lower() == "rt":
-            search_and_retweet(query=get_query())
-        else:
-            display_help()
-    else:
-        display_help()
+    while True:
+        read_rss_and_tweet(url=Settings.feed_url)
+        time.sleep( 5 * 60 )

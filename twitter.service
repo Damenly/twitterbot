@@ -1,0 +1,15 @@
+[Unit]
+Description=twitter_bot
+After=network-online.target
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=1
+ExecStart=/usr/bin/python3 /usr/bin/twitterbot.py
+Restart=on-abort
+
+[Install]
+WantedBy=default.target
