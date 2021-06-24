@@ -44,7 +44,6 @@ class TwitterAuth:
     access_token = ""
     access_token_secret = ""
 
-
 def compose_message(item: feedparser.FeedParserDict) -> str:
     """Compose a tweet from an RSS item (title, link, description)
     and return final tweet message.
@@ -162,8 +161,24 @@ def read_rss_and_tweet(url: str):
                     images.append(ref.replace('https', 'http'))
             images = list(set(images))
             message = striphtml(item["description"])
-            if len(message) >= 140:
-                message = message[0:139]
+            r1 = message.find('转发')
+            if r1 == -1:
+                r1 = 65536
+            r2 = message.find('@')
+            if r2 == -1:
+                r2 = 65536
+            if r1 != 65536 or r2 != 65536:
+                if r1 < r2:
+                    min = r1
+                else:
+                    min = r2
+                if min == r1:
+                    message = message[:min] + "//" + message[min + 2:]
+                elif min - 1 >= 0 and message[min - 1] != '/':
+                        message = message[:min] + "//" + message[min:]
+
+            if len(message) >= 280:
+                message = message[0:279]
 
             print(message, images)
             #print("\t", striphtml(item["description"]), item["link"], "\n")
@@ -171,10 +186,13 @@ def read_rss_and_tweet(url: str):
             link = item["link"]
             if is_in_logfile(link, Settings.posted_urls_output_file):
                 print("Already posted:", link)
+                continue
             else:
                 if len(images) == 0:
                     post_tweet_plain_text(message)
                 else:
+                    if len(images) > 4:
+                        images = images[:4]
                     files = download_images(images)
                     post_tweet_with_images(message, files)
 
