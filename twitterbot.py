@@ -8,6 +8,18 @@ import re
 import urllib
 import time
 
+def strip_message(message):
+    message = message.replace('转发', '//')
+    message = message.replace('回复@', '回复')
+    message = message.replace('@', '//')
+    message = message.replace('// ', '//')
+    message = message.replace(' //', '//')
+    message = message.replace('////', '//')
+    
+    if len(message) >= 210:
+                message = message[0:210]
+    return message
+
 def striphtml(data):
     p = re.compile(r'<.*?>')
     return p.sub('', data)
@@ -176,11 +188,6 @@ def read_rss_and_tweet(url: str):
                     message = message[:min] + "//" + message[min + 2:]
                 elif min - 1 >= 0 and message[min - 1] != '/':
                         message = message[:min] + "//" + message[min:]
-
-            if len(message) >= 280:
-                message = message[0:279]
-
-            print(message, images)
             #print("\t", striphtml(item["description"]), item["link"], "\n")
             #continue
             link = item["link"]
@@ -191,13 +198,27 @@ def read_rss_and_tweet(url: str):
                 if len(images) == 0:
                     post_tweet_plain_text(message)
                 else:
-                    if len(images) > 4:
-                        images = images[:4]
-                    files = download_images(images)
-                    post_tweet_with_images(message, files)
+                    i = 0
+                    while i < len(images):
+                        count = 4
+                        while i < len(images) and count > 0:
+                            i = i + 1
+                            count = count - 1
+                        if i >= 4:
+                            _images = images[i - 4:i]
+                            if i != 4:
+                                message = '接上条'
+                        else:
+                            _images = images
+                        message = strip_message(message)
+                        print("image index: ", i, "len: ", len(_images))
+                        print(message, images, "message len:", len(message))
+                        files = download_images(_images)
+                        post_tweet_with_images(message, files)
+                        print("Posted:", link)
+                        time.sleep(60)
 
                 write_to_logfile(link, Settings.posted_urls_output_file)
-                print("Posted:", link)
                 time.sleep(60)
 
     else:
