@@ -172,7 +172,10 @@ def read_rss_and_tweet(url: str):
                 if ref.endswith(".jpg") or ref.endswith(".gif"):
                     images.append(ref.replace('https', 'http'))
             images = list(set(images))
+            if item["description"].find("video") != -1:
+                continue
             message = striphtml(item["description"])
+            print(message)
             r1 = message.find('转发')
             if r1 == -1:
                 r1 = 65536
@@ -205,9 +208,15 @@ def read_rss_and_tweet(url: str):
                             i = i + 1
                             count = count - 1
                         if i >= 4:
-                            _images = images[i - 4:i]
                             if i != 4:
                                 message = '接上条'
+                            if i == 4:
+                                _images = images[i - 4:i]
+                            else:
+                                if i % 4 == 0:
+                                    _images = images[i - 4:i]
+                                else:
+                                    _images = images[i - i % 4 : i]
                         else:
                             _images = images
                         message = strip_message(message)
