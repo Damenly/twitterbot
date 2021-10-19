@@ -10,8 +10,8 @@ import time
 
 def strip_message(message):
     message = message.replace('转发', '//')
-    message = message.replace('回复@', '回复')
-    message = message.replace('@', '//')
+    message = message.replace('回复@', '回复ⓐ')
+    message = message.replace('@', 'ⓐ')
     message = message.replace('// ', '//')
     message = message.replace(' //', '//')
     message = message.replace('////', '//')
@@ -30,7 +30,8 @@ class Settings:
     Enter the RSS feed you want to tweet, or keywords you want to retweet.
     """
     # RSS feed to read and post tweets from.
-    feed_url = ""
+    feeds = ["https://damenly.herokuapp.com/rss/2681602924",
+             "https://rssfeed.today/weibo/rss/2681602924"]
 
     # Log file to save all tweeted RSS links (one URL per line).
     posted_urls_output_file = "/usr/local/posted-urls.log"
@@ -161,7 +162,7 @@ def read_rss_and_tweet(url: str):
         feed["items"].reverse()
         items = feed["items"]
         for item in items:
-            #print(item)
+            print(item)
             refs = re.findall(r'(https?://[^\s]+)', item["description"])
             #print(refs)
             images = []
@@ -338,5 +339,7 @@ def display_help():
 
 if __name__ == "__main__":
     while True:
-        read_rss_and_tweet(url=Settings.feed_url)
-        time.sleep( 5 * 60 )
+        for feed_url in Settings.feeds:
+            read_rss_and_tweet(url=feed_url)
+            time.sleep( 60 )
+        time.sleep( 20 * 60 )

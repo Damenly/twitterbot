@@ -7,9 +7,9 @@ StartLimitIntervalSec=0
 [Service]
 Type=simple
 Restart=always
-RestartSec=1
+RestartSec=60s
 ExecStart=/usr/bin/python3 /usr/bin/twitterbot.py
-Restart=on-abort
+Restart=on-failure
 
 [Install]
 WantedBy=default.target
