@@ -83,6 +83,11 @@ class TwitterAuth:
             Settings.max_weibo_count = int(config["limits"]["max_weibo_count"])
             Settings.feed_retry_interval = int(config["limits"]["feed_retry_interval"])
             Settings.post_interval = int(config["limits"]["post_interval"])
+
+            if not os.path.exists(Settings.posted_urls_output_file):
+                with open('Settings.posted_urls_output_file', 'w') as f:
+                    pass
+
         except Exception as e:
             print("Can not initilize config")
             sys.exit(1)
