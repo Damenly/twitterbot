@@ -85,7 +85,7 @@ class TwitterAuth:
             Settings.post_interval = int(config["limits"]["post_interval"])
 
             if not os.path.exists(Settings.posted_urls_output_file):
-                with open('Settings.posted_urls_output_file', 'w') as f:
+                with open(Settings.posted_urls_output_file, 'w') as f:
                     pass
 
         except Exception as e:
