@@ -7,6 +7,8 @@ import tweepy
 import re
 import urllib
 import time
+import tempfile
+import configparser
 
 def strip_message(message):
     message = message.replace('转发', '//')
@@ -33,6 +35,8 @@ class Settings:
     feeds = ["https://damenly.herokuapp.com/rss/2681602924",
              "https://rssfeed.today/weibo/rss/2681602924"]
 
+    config_path = "/etc/wb2twitter.ini"
+
     # Log file to save all tweeted RSS links (one URL per line).
     posted_urls_output_file = "/usr/local/posted-urls.log"
 
@@ -45,6 +49,11 @@ class Settings:
     # Do not include tweets with these words when retweeting.
     retweet_exclude_words = []
 
+    max_weibo_count = 10
+
+    post_interval = 1200
+
+    feed_retry_interval = 60
 
 class TwitterAuth:
     """Twitter authentication settings.
@@ -56,6 +65,27 @@ class TwitterAuth:
     consumer_secret = ""
     access_token = ""
     access_token_secret = ""
+
+    def init():
+        if not os.path.exists(Settings.config_path):
+            print(Settings.config_path + "is not existed")
+            sys.exit(1)
+
+        config = configparser.ConfigParser()
+
+        try:
+            config.read(Settings.config_path)
+            TwitterAuth.consumer_key = config["tokens"]["consumer_key"]
+            TwitterAuth.consumer_secret = config["tokens"]["consumer_secret"]
+            TwitterAuth.access_token = config["tokens"]["access_token"]
+            TwitterAuth.access_token_secret = config["tokens"]["access_token_secret"]
+
+            Settings.max_weibo_count = int(config["limits"]["max_weibo_count"])
+            Settings.feed_retry_interval = int(config["limits"]["feed_retry_interval"])
+            Settings.post_interval = int(config["limits"]["post_interval"])
+        except Exception as e:
+            print("Can not initilize config")
+            sys.exit(1)
 
 def compose_message(item: feedparser.FeedParserDict) -> str:
     """Compose a tweet from an RSS item (title, link, description)
@@ -129,11 +159,11 @@ def post_tweet_with_images(message: str, files):
     except Exception as e:
         print(e)
 
-def download_images(urls):
+def download_images(dir, urls):
     files = []
     try:
         for url in urls:
-            name =  "/tmp/" + url.rsplit('/', 1)[-1]
+            name =  dir + "/" + url.rsplit('/', 1)[-1]
             urllib.request.urlretrieve(url, name)
             files.append(name)
 
@@ -223,8 +253,11 @@ def read_rss_and_tweet(url: str):
                         message = strip_message(message)
                         print("image index: ", i, "len: ", len(_images))
                         print(message, images, "message len:", len(message))
-                        files = download_images(_images)
-                        post_tweet_with_images(message, files)
+
+                        with tempfile.TemporaryDirectory() as tmpdirname:
+                            files = download_images(tmpdirname, _images)
+                            post_tweet_with_images(message, files)
+
                         print("Posted:", link)
                         time.sleep(60)
 
@@ -286,6 +319,15 @@ def search_and_retweet(query: str, count=10):
             print("Already retweeted {} (id {})".format(
                 shorten_text(tweet["text"], maxlength=40), tweet["id_str"]))
 
+def cleanup_logfile(file):
+    with open(file, "r") as f:
+            lines = f.readlines()
+
+    if len(lines) > Settings.max_weibo_count:
+        lines_to_delete = len(lines) - Settings.max_weibo_count
+
+        with open(file, "w") as f:
+            f.writelines(lines[:-lines_to_delete])
 
 def is_in_logfile(content: str, filename: str) -> bool:
     """Does the content exist on any line in the log file?
@@ -338,8 +380,11 @@ def display_help():
 
 
 if __name__ == "__main__":
+    TwitterAuth.init()
+
     while True:
+        cleanup_logfile(Settings.posted_urls_output_file)
         for feed_url in Settings.feeds:
             read_rss_and_tweet(url=feed_url)
-            time.sleep( 60 )
-        time.sleep( 20 * 60 )
+            time.sleep( Settings.feed_retry_interval )
+        time.sleep( Settings.post_interval )
