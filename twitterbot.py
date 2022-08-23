@@ -332,7 +332,7 @@ def cleanup_logfile(file):
         lines_to_delete = len(lines) - Settings.max_weibo_count
 
         with open(file, "w") as f:
-            f.writelines(lines[:-lines_to_delete])
+            f.writelines(lines[lines_to_delete:-1])
 
 def is_in_logfile(content: str, filename: str) -> bool:
     """Does the content exist on any line in the log file?
